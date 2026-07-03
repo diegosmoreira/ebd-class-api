@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  SUPERINTENDENTE
+  PASTOR
+  PROFESSOR
+}
+
+enum TrocaStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  APPROVED
+  DECLINED
+}
+
+model Usuario {
+  id                   String        @id @default(uuid()) @db.Uuid
+  email                String        @unique
+  password_hash        String
+  role                 Role
+  must_change_password Boolean       @default(true)
+  created_at           DateTime      @default(now())
+  updated_at           DateTime      @updatedAt
+
+  professor            Professor?
+
+  // Relacionamento inverso para as aprovações de troca
+  trocasAprovadas      TrocaDeAula[] @relation("AdminAprovador")
+
+  @@map("usuarios")
+}
+
+model Professor {
+  id         String   @id @default(uuid()) @db.Uuid
+  codigo     String   @unique
+  nome       String
+  ativo      Boolean  @default(true)
+  usuario_id String   @unique @db.Uuid
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  usuario    Usuario  @relation(fields: [usuario_id], references: [id])
+  classes    Classe[] @relation("ProfessorClasse")
+  aulas      Aula[]
+
+  trocasOrigem  TrocaDeAula[] @relation("ProfessorOrigem")
+  trocasDestino TrocaDeAula[] @relation("ProfessorDestino")
+
+  @@map("professores")
+}
+
+model Classe {
+  id         String   @id @default(uuid()) @db.Uuid
+  nome       String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  professores Professor[] @relation("ProfessorClasse")
+  licoes      Licao[]
+
+  @@map("classes")
+}
+
+model Trimestre {
+  id           String   @id @default(uuid()) @db.Uuid
+  numero       Int
+  titulo       String
+  ano          Int
+  data_inicial DateTime @db.Date
+  data_final   DateTime @db.Date
+  meses        Int[]
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  licoes       Licao[]
+
+  @@map("trimestres")
+}
+
+model Licao {
+  id           String   @id @default(uuid()) @db.Uuid
+  numero       Int
+  titulo       String
+  trimestre_id String   @db.Uuid
+  classe_id    String   @db.Uuid
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  trimestre    Trimestre @relation(fields: [trimestre_id], references: [id])
+  classe       Classe    @relation(fields: [classe_id], references: [id])
+  aulas        Aula[]
+
+  @@map("licoes")
+}
+
+model Aula {
+  id           String   @id @default(uuid()) @db.Uuid
+  numero       Int
+  titulo       String
+  data         DateTime @db.Date
+  licao_id     String   @db.Uuid
+  professor_id String?  @db.Uuid
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  licao        Licao      @relation(fields: [licao_id], references: [id])
+  professor    Professor? @relation(fields: [professor_id], references: [id])
+  trocas       TrocaDeAula[]
+
+  @@map("aulas")
+}
+
+model TrocaDeAula {
+  id                   String   @id @default(uuid()) @db.Uuid
+  aula_id              String   @db.Uuid
+  professor_origem_id  String   @db.Uuid
+  professor_destino_id String   @db.Uuid
+  status               TrocaStatus @default(PENDING)
+  approved_by_id       String?  @db.Uuid
+  action_date          DateTime?
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  aula               Aula      @relation(fields: [aula_id], references: [id])
+  professor_origem   Professor @relation("ProfessorOrigem", fields: [professor_origem_id], references: [id])
+  professor_destino  Professor @relation("ProfessorDestino", fields: [professor_destino_id], references: [id])
+  approved_by        Usuario?  @relation("AdminAprovador", fields: [approved_by_id], references: [id])
+
+  @@map("trocas_de_aula")
+}

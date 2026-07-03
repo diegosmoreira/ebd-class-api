@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+*.log
+.env
+.env.local
+.DS_Store
+coverage/
+
+/src/generated/prisma
+
+# Agent & Specification Files
+.agents/
+specs/
+.specify/
+markTasks.js
